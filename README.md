@@ -41,9 +41,9 @@ UDF and a UEFI boot entry; making the drive checks that the ISO is a
 Windows installer. Making it takes as much room on the device as the ISO's
 files, and goes away when the drive is ejected.
 
-Kuroneko's Nerves system v0.1.3 or later has what it needs: UDF in the
-kernel and `losetup`. It runs as root, mounting the ISO and the drive's
-partition through loop devices.
+It needs Kuroneko v0.1.2 or later, which takes makers, on its Nerves
+system v0.1.3 or later, which has UDF in the kernel and `losetup`. It runs
+as root, mounting the ISO and the drive's partition through loop devices.
 
 ## License
 
