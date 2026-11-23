@@ -14,7 +14,6 @@ defmodule Kuroneko.WindowsMedia.Drive do
   devices: Linux, as root, with `losetup`, as Kuroneko's Nerves system has.
   """
 
-  alias Kuroneko.VirtualDisk.FAT
   alias Kuroneko.WindowsMedia.{Layout, WIM}
 
   @part_bytes 3800 * 1024 * 1024
@@ -26,6 +25,8 @@ defmodule Kuroneko.WindowsMedia.Drive do
 
   Options:
 
+    * `:format_fat` (required) - the `t:Kuroneko.WindowsMedia.format_fat/0`
+      that makes the drive's file system
     * `:label` - the drive's name, `"WINDOWS"` when `nil` or not given
     * `:free` - the bytes the drive may take, `:infinity` by default; a
       larger drive gives `{:error, {:no_room, size, free}}`
@@ -38,7 +39,15 @@ defmodule Kuroneko.WindowsMedia.Drive do
   @spec make(Path.t(), Path.t(), keyword()) :: :ok | {:error, term()}
   def make(iso, image, opts) do
     opts =
-      Keyword.validate!(opts, label: nil, free: :infinity, progress: fn _done, _total -> :ok end)
+      Keyword.validate!(opts, [
+        :format_fat,
+        label: nil,
+        free: :infinity,
+        progress: fn _done, _total -> :ok end
+      ])
+
+    format_fat = Keyword.fetch!(opts, :format_fat)
+    label = opts[:label] || "WINDOWS"
 
     with_mount(iso, image <> ".iso", ["-t", "udf", "-o", "loop,ro"], fn root ->
       with :ok <- windows_installer(root),
@@ -46,7 +55,8 @@ defmodule Kuroneko.WindowsMedia.Drive do
            layout = Layout.new(entries),
            :ok <- room(layout.size, opts[:free]),
            :ok <- disk(image, layout),
-           :ok <- format(image, layout, opts[:label] || "WINDOWS") do
+           :ok <-
+             format_fat.(image, layout.size - layout.start, label: label, offset: layout.start) do
         fill(image, root, layout, opts[:progress])
       end
     end)
@@ -76,12 +86,6 @@ defmodule Kuroneko.WindowsMedia.Drive do
            do: :file.truncate(file)
     end)
   end
-
-  # Kuroneko's FAT32, in the partition: there when this runs in Kuroneko.
-  @compile {:no_warn_undefined, FAT}
-  @dialyzer {:nowarn_function, format: 3}
-  defp format(image, layout, label),
-    do: FAT.format(image, layout.size - layout.start, label: label, offset: layout.start)
 
   defp fill(image, root, layout, progress) do
     with_loop(image, layout.start, fn loop ->

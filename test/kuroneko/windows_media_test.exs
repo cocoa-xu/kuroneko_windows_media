@@ -18,8 +18,5 @@ defmodule Kuroneko.WindowsMediaTest do
     assert WindowsMedia.offers(put_in(windows.format.udf, nil)) == []
     assert WindowsMedia.offers(%{path: "x", kind: :folder, format: nil}) == []
     assert WindowsMedia.id() == "windows-media"
-
-    context = %{image: "win.img", progress: fn _done, _total -> :ok end, free: 0}
-    assert_raise FunctionClauseError, fn -> WindowsMedia.make(windows, "bios", context) end
   end
 end

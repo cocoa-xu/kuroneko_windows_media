@@ -8,6 +8,11 @@
 * An ISO that does not mount leaves no directory behind
 * `Kuroneko.WindowsMedia.make/3` raises for a mode it did not offer,
   rather than giving an error
+* The maker takes Kuroneko's FAT32 formatter from its context,
+  `:format_fat`, rather than calling a Kuroneko module, and its image goes
+  in `as: :disk`: it needs the Kuroneko release after v0.1.2
+* `Kuroneko.WindowsMedia.Drive.make/3` takes the formatter as
+  `:format_fat`
 
 ## v0.1.0 (2026-11-23)
 
