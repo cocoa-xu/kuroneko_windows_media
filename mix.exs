@@ -1,4 +1,4 @@
-defmodule KuronekoWindowsMedia.MixProject do
+defmodule Kuroneko.WindowsMedia.MixProject do
   use Mix.Project
 
   @version "0.1.0"

@@ -1,4 +1,4 @@
-defmodule KuronekoWindowsMedia.WIM do
+defmodule Kuroneko.WindowsMedia.WIM do
   @moduledoc """
   Splits a Windows image (WIM) file into parts no larger than a size, as
   `Dism /Split-Image` does, so that a WIM larger than FAT32's 4 GiB files
@@ -140,15 +140,16 @@ defmodule KuronekoWindowsMedia.WIM do
         {:error, {:resource_too_large, big.size}}
 
       true ->
-        {parts, current, _used} =
-          Enum.reduce(ordered, {[], [], 0}, fn entry, {parts, current, used} ->
-            if used + entry.size > room and current != [],
-              do: {[Enum.reverse(current) | parts], [entry], entry.size},
-              else: {parts, [entry | current], used + entry.size}
-          end)
-
+        {parts, current, _used} = Enum.reduce(ordered, {[], [], 0}, &fill(&1, &2, room))
         {:ok, Enum.reverse([Enum.reverse(current) | parts])}
     end
+  end
+
+  # A resource to the part being filled, or to a new one when it is full.
+  defp fill(entry, {parts, current, used}, room) do
+    if used + entry.size > room and current != [],
+      do: {[Enum.reverse(current) | parts], [entry], entry.size},
+      else: {parts, [entry | current], used + entry.size}
   end
 
   defp write_parts(file, header, xml, parts, dir, name, progress) do

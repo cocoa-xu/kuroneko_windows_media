@@ -1,9 +1,9 @@
-defmodule KuronekoWindowsMedia.WIMTest do
+defmodule Kuroneko.WindowsMedia.WIMTest do
   use ExUnit.Case, async: true
 
   import Bitwise
 
-  alias KuronekoWindowsMedia.WIM
+  alias Kuroneko.WindowsMedia.WIM
 
   @moduletag :tmp_dir
 
