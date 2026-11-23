@@ -1,0 +1,12 @@
+# Build artifacts and dependencies
+/_build/
+/deps/
+/doc/
+/cover/
+/.elixir_ls/
+erl_crash.dump
+*.ez
+/kuroneko_windows_media-*.tar
+
+# Test scratch directories (ExUnit @tag :tmp_dir)
+/tmp/
