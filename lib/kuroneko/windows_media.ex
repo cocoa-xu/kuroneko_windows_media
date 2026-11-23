@@ -25,6 +25,9 @@ defmodule Kuroneko.WindowsMedia do
 
   alias Kuroneko.WindowsMedia.Drive
 
+  @typedoc "A function told the bytes done and their total, as they go."
+  @type progress() :: (done :: non_neg_integer(), total :: non_neg_integer() -> any())
+
   @doc "The maker's id: `\"windows-media\"`."
   @spec id() :: String.t()
   def id, do: "windows-media"

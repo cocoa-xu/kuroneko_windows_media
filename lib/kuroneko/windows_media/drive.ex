@@ -294,12 +294,10 @@ defmodule Kuroneko.WindowsMedia.Drive do
     end
   end
 
-  # A WIM as install.swm, install2.swm, ...: Windows Setup's names for it.
   defp split_wim(wim, dir, {done, total, report}) do
-    name = Path.rootname(Path.basename(wim))
     progress = fn n, _wim_total -> report.(done + n, total) end
 
-    with {:ok, _parts} <- WIM.split(wim, dir, name, @part_bytes, progress),
+    with {:ok, _parts} <- WIM.split(wim, dir, max_bytes: @part_bytes, progress: progress),
          do: {:ok, File.stat!(wim).size}
   end
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+* `Kuroneko.WindowsMedia.WIM.split/3` takes the parts' size, name and
+  progress as options: `:max_bytes`, `:name` (the WIM's own name by
+  default) and `:progress`
+
 ## v0.1.0 (2026-11-23)
 
 First version:
