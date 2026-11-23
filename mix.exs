@@ -31,7 +31,10 @@ defmodule Kuroneko.WindowsMedia.MixProject do
   defp package do
     [
       licenses: ["GPL-3.0-or-later"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "https://hexdocs.pm/kuroneko_windows_media/changelog.html"
+      },
       files: ["lib", "mix.exs", "README.md", "CHANGELOG.md", "LICENSE", ".formatter.exs"]
     ]
   end

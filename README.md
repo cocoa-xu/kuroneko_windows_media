@@ -17,11 +17,20 @@ for a BIOS.
 
 ## Installation
 
+It needs the Kuroneko release after v0.1.2, whose makers get Kuroneko's
+FAT32 formatter, on its Nerves system v0.1.3 or later, which has UDF in
+the kernel and `losetup`. Making a drive runs as root, mounting the ISO
+and the drive's partition through loop devices.
+
 Kuroneko does not carry this library: a firmware that wants Windows
-installer drives adds it to Kuroneko's dependencies and makers,
+installer drives adds it to its dependencies and to Kuroneko's makers,
 
 ```elixir
-{:kuroneko_windows_media, github: "cocoa-xu/kuroneko_windows_media", tag: "v0.1.0"}
+def deps do
+  [
+    {:kuroneko_windows_media, github: "cocoa-xu/kuroneko_windows_media", tag: "v0.1.0"}
+  ]
+end
 ```
 
 ```elixir
@@ -36,15 +45,12 @@ compiled modules copied to the device:
 Kuroneko.VirtualDisk.register_maker(Kuroneko.WindowsMedia)
 ```
 
-Then **Disk…** offers *USB drive: Windows installer, UEFI* for an ISO with
-UDF and a UEFI boot entry; making the drive checks that the ISO is a
-Windows installer. Making it takes as much room on the device as the ISO's
-files, and goes away when the drive is ejected.
+## Usage
 
-It needs the Kuroneko release after v0.1.2, whose makers get Kuroneko's
-FAT32 formatter, on its Nerves system v0.1.3 or later, which has UDF in
-the kernel and `losetup`. It runs as root, mounting the ISO and the
-drive's partition through loop devices.
+**Disk…** offers *USB drive: Windows installer, UEFI* for an ISO with UDF
+and a UEFI boot entry; making the drive checks that the ISO is a Windows
+installer. Making it takes as much room on the device as the ISO's files,
+and goes away when the drive is ejected.
 
 ## License
 

@@ -10,8 +10,8 @@ defmodule Kuroneko.WindowsMedia do
 
   ## The maker
 
-  Kuroneko takes makers from its `:disk_makers` setting, or registered at
-  run time. A maker is a module with three functions:
+  A maker is a module with three functions, which Kuroneko takes from its
+  `:disk_makers` setting, or registered at run time:
 
     * `id/0` - the maker's id
     * `offers/1` - what it offers for an item of Kuroneko's library, which
@@ -20,7 +20,8 @@ defmodule Kuroneko.WindowsMedia do
       in a task of Kuroneko's, given a `t:context/0` that brings Kuroneko's
       FAT32 formatter, and says how the image goes in the drive
 
-  Kuroneko's makers work so from the release after v0.1.2.
+  This maker needs the Kuroneko release after v0.1.2, whose makers get
+  that context.
 
   This library is GPL-3.0-or-later: a firmware that has it carries the
   GPL's terms for it.
