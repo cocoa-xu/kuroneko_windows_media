@@ -6,6 +6,8 @@
   progress as options: `:max_bytes`, `:name` (the WIM's own name by
   default) and `:progress`
 * An ISO that does not mount leaves no directory behind
+* `Kuroneko.WindowsMedia.make/3` raises for a mode it did not offer,
+  rather than giving an error
 
 ## v0.1.0 (2026-11-23)
 

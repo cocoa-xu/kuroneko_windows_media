@@ -21,21 +21,33 @@ defmodule Kuroneko.WindowsMedia.Drive do
   @chunk 1_048_576
 
   @doc """
-  Makes `image` from the ISO at `iso`, telling `progress` the bytes done
-  and their total. `free` is the room it may take.
+  Makes `image` a USB drive with the files of the Windows installer's ISO
+  at `iso`.
+
+  Options:
+
+    * `:label` - the drive's name, `"WINDOWS"` when `nil` or not given
+    * `:free` - the bytes the drive may take, `:infinity` by default; a
+      larger drive gives `{:error, {:no_room, size, free}}`
+    * `:progress` - a `t:Kuroneko.WindowsMedia.progress/0`, told the bytes
+      of the ISO's files written and their total
+
+  An ISO without Windows Setup and its UEFI boot loader gives
+  `{:error, :not_a_windows_installer}`.
   """
   @spec make(Path.t(), Path.t(), keyword()) :: :ok | {:error, term()}
   def make(iso, image, opts) do
-    progress = Keyword.get(opts, :progress, fn _done, _total -> :ok end)
+    opts =
+      Keyword.validate!(opts, label: nil, free: :infinity, progress: fn _done, _total -> :ok end)
 
     with_mount(iso, image <> ".iso", ["-t", "udf", "-o", "loop,ro"], fn root ->
       with :ok <- windows_installer(root),
            {:ok, entries} <- Layout.entries(root),
            layout = Layout.new(entries),
-           :ok <- room(layout.size, Keyword.get(opts, :free)),
+           :ok <- room(layout.size, opts[:free]),
            :ok <- disk(image, layout),
-           :ok <- format(image, layout, Keyword.get(opts, :label)) do
-        fill(image, root, layout, progress)
+           :ok <- format(image, layout, opts[:label] || "WINDOWS") do
+        fill(image, root, layout, opts[:progress])
       end
     end)
   end
@@ -53,9 +65,9 @@ defmodule Kuroneko.WindowsMedia.Drive do
        else: {:error, :not_a_windows_installer}
   end
 
-  defp room(_size, nil), do: :ok
-  defp room(size, free) when size <= free, do: :ok
-  defp room(size, free), do: {:error, {:no_room, size, free}}
+  defp room(_size, :infinity), do: :ok
+  defp room(size, free) when is_integer(free) and size <= free, do: :ok
+  defp room(size, free) when is_integer(free), do: {:error, {:no_room, size, free}}
 
   defp disk(image, layout) do
     with_file(image, [:write, :binary, :raw], fn file ->
@@ -69,11 +81,7 @@ defmodule Kuroneko.WindowsMedia.Drive do
   @compile {:no_warn_undefined, FAT}
   @dialyzer {:nowarn_function, format: 3}
   defp format(image, layout, label),
-    do:
-      FAT.format(image, layout.size - layout.start,
-        label: label || "WINDOWS",
-        offset: layout.start
-      )
+    do: FAT.format(image, layout.size - layout.start, label: label, offset: layout.start)
 
   defp fill(image, root, layout, progress) do
     with_loop(image, layout.start, fn loop ->

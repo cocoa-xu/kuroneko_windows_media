@@ -25,6 +25,19 @@ defmodule Kuroneko.WindowsMedia do
 
   alias Kuroneko.WindowsMedia.Drive
 
+  @typedoc """
+  An item of Kuroneko's library: an image file or a folder, with what
+  Kuroneko read of an image (`nil` for a folder). Of an image, the maker
+  reads its UDF revision, its boot platforms and its label.
+  """
+  @type item() :: %{path: Path.t(), kind: :image | :folder, format: map() | nil}
+
+  @typedoc """
+  What Kuroneko gives `make/3`: where to make the image, a function told
+  the bytes done and their total, and the bytes free for the image.
+  """
+  @type context() :: %{image: Path.t(), progress: progress(), free: non_neg_integer()}
+
   @typedoc "A function told the bytes done and their total, as they go."
   @type progress() :: (done :: non_neg_integer(), total :: non_neg_integer() -> any())
 
@@ -33,12 +46,11 @@ defmodule Kuroneko.WindowsMedia do
   def id, do: "windows-media"
 
   @doc """
-  A USB drive for an ISO with UDF and a UEFI boot entry, as Windows
+  A USB drive for an image with UDF and a UEFI boot entry, as Windows
   installers have; whether it is one is checked when the drive is made.
   """
-  @spec offers(map()) :: [%{mode: String.t(), label: String.t()}]
-  def offers(%{kind: :image, format: %{udf: udf, boot: boot}})
-      when is_binary(udf) and is_list(boot) do
+  @spec offers(item()) :: [%{mode: String.t(), label: String.t()}]
+  def offers(%{kind: :image, format: %{udf: udf, boot: boot}}) when is_binary(udf) do
     if :uefi in boot,
       do: [%{mode: "uefi", label: "USB drive: Windows installer, UEFI"}],
       else: []
@@ -46,14 +58,13 @@ defmodule Kuroneko.WindowsMedia do
 
   def offers(_item), do: []
 
-  @doc "Makes the USB drive's image; it goes in read-only."
-  @spec make(map(), String.t(), map()) :: {:ok, keyword()} | {:error, term()}
-  def make(%{path: iso} = item, "uefi", %{image: image, progress: progress} = context) do
-    opts = [progress: progress, free: context[:free], label: get_in(item, [:format, :label])]
+  @doc "Makes the USB drive's image of an item it offered one for; it goes in read-only."
+  @spec make(item(), String.t(), context()) ::
+          {:ok, [cdrom: false, read_only: true]} | {:error, term()}
+  def make(%{path: iso, format: %{label: label}}, "uefi", context) do
+    %{image: image, progress: progress, free: free} = context
 
-    with :ok <- Drive.make(iso, image, opts),
+    with :ok <- Drive.make(iso, image, label: label, free: free, progress: progress),
          do: {:ok, cdrom: false, read_only: true}
   end
-
-  def make(_item, mode, _context), do: {:error, {:unknown_mode, mode}}
 end
