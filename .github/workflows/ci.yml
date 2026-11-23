@@ -13,36 +13,45 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
-env:
-  OTP_VERSION: "29.1.2"
-  ELIXIR_VERSION: "1.20.5-otp-29"
-
 jobs:
   test:
+    name: test (Elixir ${{ matrix.elixir }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          # The oldest Elixir that mix.exs takes
+          - otp: "26.2.5.21"
+            elixir: "1.15.8-otp-26"
+          - otp: "29.1.2"
+            elixir: "1.20.5-otp-29"
+            lint: true
     env:
       MIX_ENV: test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
-          otp-version: ${{ env.OTP_VERSION }}
-          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             deps
             _build
             ~/.mix/dialyxir_*
-          key: mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
-          restore-keys: mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+          key: mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('mix.lock') }}
+          restore-keys: mix-${{ matrix.otp }}-${{ matrix.elixir }}-
       - run: mix deps.get
       - run: mix format --check-formatted
+        if: matrix.lint
       - run: mix compile --warnings-as-errors --force
       - run: mix test
       - run: mix credo --strict
+        if: matrix.lint
       - run: mix dialyzer
+        if: matrix.lint
 
   release:
     if: github.ref_type == 'tag'
