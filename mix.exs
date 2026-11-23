@@ -19,10 +19,6 @@ defmodule Kuroneko.WindowsMedia.MixProject do
     ]
   end
 
-  def application do
-    [extra_applications: [:logger]]
-  end
-
   def cli do
     [preferred_envs: [docs: :docs, "hex.build": :docs, dialyzer: :test, credo: :test]]
   end

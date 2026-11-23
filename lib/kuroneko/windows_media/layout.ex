@@ -86,7 +86,7 @@ defmodule Kuroneko.WindowsMedia.Layout do
       <<0x80, 0xFE, 0xFF, 0xFF, 0x0C, 0xFE, 0xFF, 0xFF, first::little-32,
         div(size, @sector) - first::little-32>>
 
-    <<0xCD, 0x18, 0::size(438)-unit(8), :crypto.strong_rand_bytes(4)::binary, 0::16,
-      entry::binary, 0::size(48)-unit(8), 0x55, 0xAA>>
+    <<0xCD, 0x18, 0::size(438)-unit(8), :rand.bytes(4)::binary, 0::16, entry::binary,
+      0::size(48)-unit(8), 0x55, 0xAA>>
   end
 end
