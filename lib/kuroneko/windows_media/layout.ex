@@ -11,7 +11,8 @@ defmodule Kuroneko.WindowsMedia.Layout do
   @enforce_keys [:entries, :size, :bytes]
   defstruct [:entries, :size, :bytes, start: @start]
 
-  @type entry() :: {:dir, Path.t()} | {:file | :split, Path.t(), non_neg_integer()}
+  @type tree_entry() :: {:dir, Path.t()} | {:file, Path.t(), non_neg_integer()}
+  @type entry() :: tree_entry() | {:split, Path.t(), non_neg_integer()}
 
   @type t() :: %__MODULE__{
           entries: [entry()],
@@ -20,7 +21,7 @@ defmodule Kuroneko.WindowsMedia.Layout do
           bytes: non_neg_integer()
         }
 
-  @spec entries(Path.t()) :: {:ok, [entry()]} | {:error, File.posix()}
+  @spec entries(Path.t()) :: {:ok, [tree_entry()]} | {:error, File.posix()}
   def entries(root) do
     with {:ok, children} <- children(root, ""), do: walk(root, children, [])
   end
@@ -49,7 +50,7 @@ defmodule Kuroneko.WindowsMedia.Layout do
          do: {:ok, for(name <- Enum.sort(names), do: Path.join(dir, name))}
   end
 
-  @spec new([entry()]) :: t()
+  @spec new([tree_entry()]) :: t()
   def new(entries) do
     entries = Enum.map(entries, &split_large_wim/1)
     data = entries |> Enum.map(&footprint/1) |> Enum.sum()
