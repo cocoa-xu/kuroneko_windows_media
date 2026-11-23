@@ -27,27 +27,19 @@ defmodule Kuroneko.WindowsMedia.Drive do
   @spec make(Path.t(), Path.t(), keyword()) :: :ok | {:error, term()}
   def make(iso, image, opts) do
     progress = Keyword.get(opts, :progress, fn _done, _total -> :ok end)
-    iso_dir = image <> ".iso"
 
-    with :ok <- File.mkdir_p(iso_dir),
-         :ok <- run("mount", ["-t", "udf", "-o", "loop,ro", iso, iso_dir]) do
-      try do
-        with :ok <- windows_installer(iso_dir),
-             {:ok, entries} <- Layout.entries(iso_dir),
-             layout = Layout.new(entries),
-             :ok <- room(layout.size, Keyword.get(opts, :free)),
-             :ok <- disk(image, layout),
-             :ok <- format(image, layout, Keyword.get(opts, :label)) do
-          fill(image, iso_dir, layout, progress)
-        end
-      after
-        _ = run("umount", [iso_dir])
-        File.rmdir(iso_dir)
+    with_mount(iso, image <> ".iso", ["-t", "udf", "-o", "loop,ro"], fn root ->
+      with :ok <- windows_installer(root),
+           {:ok, entries} <- Layout.entries(root),
+           layout = Layout.new(entries),
+           :ok <- room(layout.size, Keyword.get(opts, :free)),
+           :ok <- disk(image, layout),
+           :ok <- format(image, layout, Keyword.get(opts, :label)) do
+        fill(image, root, layout, progress)
       end
-    end
+    end)
   end
 
-  # What Windows Setup needs, and UEFI to start it.
   defp windows_installer(dir) do
     install =
       Enum.any?(
@@ -66,15 +58,11 @@ defmodule Kuroneko.WindowsMedia.Drive do
   defp room(size, free), do: {:error, {:no_room, size, free}}
 
   defp disk(image, layout) do
-    with {:ok, file} <- File.open(image, [:write, :binary, :raw]) do
-      try do
-        with :ok <- :file.pwrite(file, 0, Layout.mbr(layout)),
-             {:ok, _at} <- :file.position(file, layout.size),
-             do: :file.truncate(file)
-      after
-        File.close(file)
-      end
-    end
+    with_file(image, [:write, :binary, :raw], fn file ->
+      with :ok <- :file.pwrite(file, 0, Layout.mbr(layout)),
+           {:ok, _position} <- :file.position(file, layout.size),
+           do: :file.truncate(file)
+    end)
   end
 
   # Kuroneko's FAT32, in the partition: there when this runs in Kuroneko.
@@ -88,42 +76,11 @@ defmodule Kuroneko.WindowsMedia.Drive do
       )
 
   defp fill(image, root, layout, progress) do
-    drive_dir = image <> ".fat"
-
-    with :ok <- File.mkdir_p(drive_dir),
-         {:ok, loop} <- attach(image, layout.start),
-         :ok <- mount_drive(loop, drive_dir) do
-      try do
-        write(layout.entries, root, drive_dir, 0, &progress.(&1, layout.bytes))
-      after
-        _ = run("umount", [drive_dir])
-        _ = run("losetup", ["-d", loop])
-        _ = File.rmdir(drive_dir)
-      end
-    else
-      error ->
-        _ = File.rmdir(drive_dir)
-        error
-    end
-  end
-
-  defp mount_drive(loop, dir) do
-    case run("mount", ["-t", "vfat", "-o", "utf8,shortname=mixed", loop, dir]) do
-      :ok ->
-        :ok
-
-      error ->
-        _ = run("losetup", ["-d", loop])
-        error
-    end
-  end
-
-  # A loop device on the partition.
-  defp attach(image, offset) do
-    with {:ok, free} <- output("losetup", ["-f"]),
-         loop = String.trim(free),
-         :ok <- run("losetup", ["-o", Integer.to_string(offset), loop, image]),
-         do: {:ok, loop}
+    with_loop(image, layout.start, fn loop ->
+      with_mount(loop, image <> ".fat", ["-t", "vfat", "-o", "utf8,shortname=mixed"], fn drive ->
+        write(layout.entries, root, drive, 0, &progress.(&1, layout.bytes))
+      end)
+    end)
   end
 
   defp write([], _from, _to, _done, _report), do: :ok
@@ -147,19 +104,9 @@ defmodule Kuroneko.WindowsMedia.Drive do
   end
 
   defp copy_file(from, to, done, report) do
-    with {:ok, input} <- File.open(from, [:read, :binary, :raw]) do
-      try do
-        with {:ok, output} <- File.open(to, [:write, :binary, :raw]) do
-          try do
-            stream(input, output, done, report)
-          after
-            File.close(output)
-          end
-        end
-      after
-        File.close(input)
-      end
-    end
+    with_file(from, [:read, :binary, :raw], fn input ->
+      with_file(to, [:write, :binary, :raw], &stream(input, &1, done, report))
+    end)
   end
 
   defp stream(input, output, done, report) do
@@ -179,16 +126,39 @@ defmodule Kuroneko.WindowsMedia.Drive do
     end
   end
 
-  defp run(command, args) do
-    case System.cmd(command, args, stderr_to_stdout: true) do
-      {_output, 0} -> :ok
-      {output, _status} -> {:error, {command, String.trim(output)}}
+  defp with_mount(device, dir, options, fun) do
+    with :ok <- File.mkdir_p(dir) do
+      try do
+        with {:ok, _output} <- cmd("mount", options ++ [device, dir]) do
+          try do
+            fun.(dir)
+          after
+            cmd("umount", [dir])
+          end
+        end
+      after
+        File.rmdir(dir)
+      end
     end
-  rescue
-    error in ErlangError -> {:error, {command, error.original}}
   end
 
-  defp output(command, args) do
+  defp with_loop(image, offset, fun) do
+    with {:ok, free} <- cmd("losetup", ["-f"]),
+         loop = String.trim(free),
+         {:ok, _output} <- cmd("losetup", ["-o", Integer.to_string(offset), loop, image]) do
+      try do
+        fun.(loop)
+      after
+        cmd("losetup", ["-d", loop])
+      end
+    end
+  end
+
+  defp with_file(path, modes, fun) do
+    with {:ok, result} <- File.open(path, modes, fun), do: result
+  end
+
+  defp cmd(command, args) do
     case System.cmd(command, args, stderr_to_stdout: true) do
       {output, 0} -> {:ok, output}
       {output, _status} -> {:error, {command, String.trim(output)}}
