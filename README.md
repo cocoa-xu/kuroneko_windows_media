@@ -17,8 +17,8 @@ for a BIOS.
 
 ## Installation
 
-It needs the Kuroneko release after v0.1.2, whose makers get Kuroneko's
-FAT32 formatter, on its Nerves system v0.1.3 or later, which has UDF in
+It needs Kuroneko v0.2.0 or later, whose makers get Kuroneko's FAT32
+formatter, on its Nerves system v0.1.3 or later, which has UDF in
 the kernel and `losetup`. Making a drive runs as root, mounting the ISO
 and the drive's partition through loop devices.
 
@@ -28,7 +28,7 @@ installer drives adds it to its dependencies and to Kuroneko's makers,
 ```elixir
 def deps do
   [
-    {:kuroneko_windows_media, github: "cocoa-xu/kuroneko_windows_media", tag: "v0.1.0"}
+    {:kuroneko_windows_media, github: "cocoa-xu/kuroneko_windows_media", tag: "v0.2.0"}
   ]
 end
 ```
